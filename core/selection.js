@@ -20,6 +20,7 @@ class Selection {
     this.composing = false;
     this.mouseDown = false;
     this.root = this.scroll.domNode;
+    this.rootDocument = (this.root.getRootNode ? this.root.getRootNode() : document);
     this.cursor = this.scroll.create('cursor', this);
     // savedRange is last non-null range
     this.savedRange = new Range(0, 0);
@@ -27,7 +28,7 @@ class Selection {
     this.lastNative = null;
     this.handleComposition();
     this.handleDragging();
-    this.emitter.listenDOM('selectionchange', document, () => {
+    this.emitter.listenDOM('selectionchange', this.rootDocument, () => {
       if (!this.mouseDown && !this.composing) {
         setTimeout(this.update.bind(this, Emitter.sources.USER), 1);
       }
@@ -184,7 +185,7 @@ class Selection {
   }
 
   getNativeRange() {
-    const selection = document.getSelection();
+    const selection = this.rootDocument.getSelection();
     if (selection == null || selection.rangeCount <= 0) return null;
     const nativeRange = selection.getRangeAt(0);
     if (nativeRange == null) return null;
@@ -202,8 +203,8 @@ class Selection {
 
   hasFocus() {
     return (
-      document.activeElement === this.root ||
-      contains(this.root, document.activeElement)
+      this.rootDocument.activeElement === this.root ||
+      contains(this.root, this.rootDocument.activeElement)
     );
   }
 
@@ -325,7 +326,7 @@ class Selection {
     ) {
       return;
     }
-    const selection = document.getSelection();
+    const selection = this.rootDocument.getSelection();
     if (selection == null) return;
     if (startNode != null) {
       if (!this.hasFocus()) this.root.focus();
@@ -416,6 +417,8 @@ class Selection {
   }
 }
 
+// TODO ShadowDom consider? https://github.com/ing-bank/lion/blob/master/packages/overlays/src/utils/deep-contains.js
+// TODO note that handleDOM has a contains impl as well..
 function contains(parent, descendant) {
   try {
     // Firefox inserts inaccessible nodes around video elements
