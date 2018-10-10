@@ -19,6 +19,7 @@ const constantPack = new webpack.DefinePlugin({
 const source = [
   'quill.js',
   'core.js',
+  'vaadin-quill.js',
   'blots',
   'core',
   'formats',
@@ -102,6 +103,7 @@ const baseConfig = {
   entry: {
     'quill.js': ['./quill.js'],
     'quill.core.js': ['./core.js'],
+    'vaadin-quill.js': ['./vaadin-quill.js'],
     'quill.core': './assets/core.styl',
     'quill.bubble': './assets/bubble.styl',
     'quill.snow': './assets/snow.styl',
