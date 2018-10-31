@@ -3,7 +3,7 @@ import cloneDeep from 'lodash.clonedeep';
 import isEqual from 'lodash.isequal';
 import Emitter from './emitter';
 import logger from './logger';
-import { SHADOW_SELECTIONCHANGE, getRange } from './shadow-selection-polyfill';
+import { SHADOW_SELECTIONCHANGE, getRange, addRange } from './shadow-selection-polyfill';
 
 const debug = logger('quill:selection');
 
@@ -353,8 +353,7 @@ class Selection {
         const range = document.createRange();
         range.setStart(startNode, startOffset);
         range.setEnd(endNode, endOffset);
-        selection.removeAllRanges();
-        selection.addRange(range);
+        addRange(this.rootDocument, selection, range);
       }
     } else {
       selection.removeAllRanges();
