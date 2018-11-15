@@ -3,7 +3,7 @@ import cloneDeep from 'lodash.clonedeep';
 import isEqual from 'lodash.isequal';
 import Emitter from './emitter';
 import logger from './logger';
-import { SHADOW_SELECTIONCHANGE, getRange, addRange } from './shadow-selection-polyfill';
+import { SHADOW_SELECTIONCHANGE, getRange, addRange, usePolyfill } from './shadow-selection-polyfill';
 
 const debug = logger('quill:selection');
 
@@ -29,11 +29,13 @@ class Selection {
     this.lastNative = null;
     this.handleComposition();
     this.handleDragging();
-    this.emitter.listenDOM(SHADOW_SELECTIONCHANGE, this.rootDocument, () => {
-      if (!this.mouseDown && !this.composing) {
-        setTimeout(this.update.bind(this, Emitter.sources.USER), 1);
-      }
-    });
+    if (!usePolyfill) {
+      this.emitter.listenDOM(SHADOW_SELECTIONCHANGE, this.rootDocument, () => {
+        if (!this.mouseDown && !this.composing) {
+          setTimeout(this.update.bind(this, Emitter.sources.USER), 1);
+        }
+      });
+    }
     this.emitter.on(Emitter.events.SCROLL_BEFORE_UPDATE, () => {
       if (!this.hasFocus()) return;
       const native = this.getNativeRange();
