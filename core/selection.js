@@ -3,7 +3,7 @@ import cloneDeep from 'lodash.clonedeep';
 import isEqual from 'lodash.isequal';
 import Emitter from './emitter';
 import logger from './logger';
-import { SHADOW_SELECTIONCHANGE, getRange, addRange, usePolyfill } from './shadow-selection-polyfill';
+import { ShadowSelection } from './shadow-selection-polyfill';
 
 const debug = logger('quill:selection');
 
@@ -29,18 +29,25 @@ class Selection {
     this.lastNative = null;
     this.handleComposition();
     this.handleDragging();
-    if (!usePolyfill) {
-      this.emitter.listenDOM(SHADOW_SELECTIONCHANGE, this.rootDocument, () => {
-        if (!this.mouseDown && !this.composing) {
-          setTimeout(this.update.bind(this, Emitter.sources.USER), 1);
-        }
-      });
-    }
-    this.emitter.on(Emitter.events.SCROLL_BEFORE_UPDATE, () => {
+    this.emitter.listenDOM('selectionchange', document, () => {
+      if (!this.mouseDown && !this.composing) {
+        setTimeout(this.update.bind(this, Emitter.sources.USER), 1);
+      }
+    });
+    this.emitter.on(Emitter.events.SCROLL_BEFORE_UPDATE, (_, mutations) => {
       if (!this.hasFocus()) return;
       const native = this.getNativeRange();
       if (native == null) return;
-      if (native.start.node === this.cursor.textNode) return; // cursor.restore() will handle
+
+      // We might need to hack the offset on Safari, when we are dealing with the first character of a row.
+      // This likely happens because of a race condition between quill's update method being called before the
+      // selectionchange event being fired in the selection polyfill.
+      const hackOffset = (native.start.offset === 0 &&
+                          native.start.offset === native.end.offset &&
+                          this.rootDocument.getSelection() instanceof ShadowSelection &&
+                          mutations.some((a) => a.type === 'characterData' && a.oldValue === '')) ? 1 : 0;
+      if (native.start.node === this.cursor.textNode) return;  // cursor.restore() will handle
+      // TODO unclear if this has negative side effects
       this.emitter.once(Emitter.events.SCROLL_UPDATE, () => {
         try {
           if (
@@ -49,9 +56,9 @@ class Selection {
           ) {
             this.setNativeRange(
               native.start.node,
-              native.start.offset,
+              native.start.offset + hackOffset,
               native.end.node,
-              native.end.offset,
+              native.end.offset + hackOffset
             );
           }
           this.update(Emitter.sources.SILENT);
@@ -188,7 +195,9 @@ class Selection {
   }
 
   getNativeRange() {
-    const nativeRange = getRange(this.rootDocument);
+    const selection = this.rootDocument.getSelection();
+    if (selection == null || selection.rangeCount <= 0) return null;
+    const nativeRange = selection.getRangeAt(0);
     if (nativeRange == null) return null;
     const range = this.normalizeNative(nativeRange);
     debug.info('getNativeRange', range);
@@ -327,7 +336,7 @@ class Selection {
     ) {
       return;
     }
-    const selection = typeof this.rootDocument.getSelection === 'function' ? this.rootDocument.getSelection() : document.getSelection();
+    const selection = this.rootDocument.getSelection();
     if (selection == null) return;
     if (startNode != null) {
       if (!this.hasFocus()) this.root.focus();
@@ -355,7 +364,8 @@ class Selection {
         const range = document.createRange();
         range.setStart(startNode, startOffset);
         range.setEnd(endNode, endOffset);
-        addRange(this.rootDocument, selection, range);
+        selection.removeAllRanges();
+        selection.addRange(range);
       }
     } else {
       selection.removeAllRanges();
