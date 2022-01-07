@@ -155,10 +155,7 @@ module.exports = env => {
     return {
       ...prodConfig,
       mode: 'production',
-      entry: {
-        'quill.min.js': './quill.js',
-        'vaadin-quill.min.js': './vaadin-quill.js',
-      },
+      entry: { 'quill.min.js': './quill.js' },
       devtool: 'source-map',
     };
   }
