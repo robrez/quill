@@ -140,6 +140,7 @@
     }
   },
   "eslintIgnore": [
+    "core/shadow-selection-polyfill.js",
     "dist/",
     "docs/",
     "node_modules/"

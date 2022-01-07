@@ -3,6 +3,7 @@ import cloneDeep from 'lodash.clonedeep';
 import isEqual from 'lodash.isequal';
 import Emitter from './emitter';
 import logger from './logger';
+import { ShadowSelection } from './shadow-selection-polyfill';
 
 const debug = logger('quill:selection');
 
@@ -20,6 +21,9 @@ class Selection {
     this.composing = false;
     this.mouseDown = false;
     this.root = this.scroll.domNode;
+    this.rootDocument = this.root.getRootNode
+      ? this.root.getRootNode()
+      : document;
     this.cursor = this.scroll.create('cursor', this);
     // savedRange is last non-null range
     this.savedRange = new Range(0, 0);
@@ -32,11 +36,23 @@ class Selection {
         setTimeout(this.update.bind(this, Emitter.sources.USER), 1);
       }
     });
-    this.emitter.on(Emitter.events.SCROLL_BEFORE_UPDATE, () => {
+    this.emitter.on(Emitter.events.SCROLL_BEFORE_UPDATE, (_, mutations) => {
       if (!this.hasFocus()) return;
       const native = this.getNativeRange();
       if (native == null) return;
+
+      // We might need to hack the offset on Safari, when we are dealing with the first character of a row.
+      // This likely happens because of a race condition between quill's update method being called before the
+      // selectionchange event being fired in the selection polyfill.
+      const hackOffset =
+        native.start.offset === 0 &&
+        native.start.offset === native.end.offset &&
+        this.rootDocument.getSelection() instanceof ShadowSelection &&
+        mutations.some(a => a.type === 'characterData' && a.oldValue === '')
+          ? 1
+          : 0;
       if (native.start.node === this.cursor.textNode) return; // cursor.restore() will handle
+      // TODO unclear if this has negative side effects
       this.emitter.once(Emitter.events.SCROLL_UPDATE, () => {
         try {
           if (
@@ -45,9 +61,9 @@ class Selection {
           ) {
             this.setNativeRange(
               native.start.node,
-              native.start.offset,
+              native.start.offset + hackOffset,
               native.end.node,
-              native.end.offset,
+              native.end.offset + hackOffset,
             );
           }
           this.update(Emitter.sources.SILENT);
@@ -184,7 +200,7 @@ class Selection {
   }
 
   getNativeRange() {
-    const selection = document.getSelection();
+    const selection = this.rootDocument.getSelection();
     if (selection == null || selection.rangeCount <= 0) return null;
     const nativeRange = selection.getRangeAt(0);
     if (nativeRange == null) return null;
@@ -202,8 +218,8 @@ class Selection {
 
   hasFocus() {
     return (
-      document.activeElement === this.root ||
-      contains(this.root, document.activeElement)
+      this.rootDocument.activeElement === this.root ||
+      contains(this.root, this.rootDocument.activeElement)
     );
   }
 
@@ -325,7 +341,7 @@ class Selection {
     ) {
       return;
     }
-    const selection = document.getSelection();
+    const selection = this.rootDocument.getSelection();
     if (selection == null) return;
     if (startNode != null) {
       if (!this.hasFocus()) this.root.focus();
@@ -416,6 +432,8 @@ class Selection {
   }
 }
 
+// TODO ShadowDom consider? https://github.com/ing-bank/lion/blob/master/packages/overlays/src/utils/deep-contains.js
+// TODO note that handleDOM has a contains impl as well..
 function contains(parent, descendant) {
   try {
     // Firefox inserts inaccessible nodes around video elements
