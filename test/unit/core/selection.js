@@ -65,18 +65,18 @@ describe('Selection', function() {
     });
 
     it('getRange()', function() {
-      let selection = this.initialize(Selection, '<p>0123</p>', container);
+      const selection = this.initialize(Selection, '<p>0123</p>', container);
       selection.setNativeRange(container.firstChild.firstChild, 1);
-      let [range, ] = selection.getRange();
+      const [range] = selection.getRange();
       expect(range.index).toEqual(1);
       expect(range.length).toEqual(0);
     });
 
     it('setRange()', function() {
-      let selection = this.initialize(Selection, '', container);
-      let expected = new Range(0);
+      const selection = this.initialize(Selection, '', container);
+      const expected = new Range(0);
       selection.setRange(expected);
-      let [range, ] = selection.getRange();
+      const [range] = selection.getRange();
       expect(range).toEqual(expected);
       expect(selection.hasFocus()).toBe(true);
     });

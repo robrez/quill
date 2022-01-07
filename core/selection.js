@@ -21,7 +21,9 @@ class Selection {
     this.composing = false;
     this.mouseDown = false;
     this.root = this.scroll.domNode;
-    this.rootDocument = (this.root.getRootNode ? this.root.getRootNode() : document);
+    this.rootDocument = this.root.getRootNode
+      ? this.root.getRootNode()
+      : document;
     this.cursor = this.scroll.create('cursor', this);
     // savedRange is last non-null range
     this.savedRange = new Range(0, 0);
@@ -42,11 +44,14 @@ class Selection {
       // We might need to hack the offset on Safari, when we are dealing with the first character of a row.
       // This likely happens because of a race condition between quill's update method being called before the
       // selectionchange event being fired in the selection polyfill.
-      const hackOffset = (native.start.offset === 0 &&
-                          native.start.offset === native.end.offset &&
-                          this.rootDocument.getSelection() instanceof ShadowSelection &&
-                          mutations.some((a) => a.type === 'characterData' && a.oldValue === '')) ? 1 : 0;
-      if (native.start.node === this.cursor.textNode) return;  // cursor.restore() will handle
+      const hackOffset =
+        native.start.offset === 0 &&
+        native.start.offset === native.end.offset &&
+        this.rootDocument.getSelection() instanceof ShadowSelection &&
+        mutations.some(a => a.type === 'characterData' && a.oldValue === '')
+          ? 1
+          : 0;
+      if (native.start.node === this.cursor.textNode) return; // cursor.restore() will handle
       // TODO unclear if this has negative side effects
       this.emitter.once(Emitter.events.SCROLL_UPDATE, () => {
         try {
@@ -58,7 +63,7 @@ class Selection {
               native.start.node,
               native.start.offset + hackOffset,
               native.end.node,
-              native.end.offset + hackOffset
+              native.end.offset + hackOffset,
             );
           }
           this.update(Emitter.sources.SILENT);

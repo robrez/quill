@@ -1,15 +1,15 @@
 import EventEmitter from 'eventemitter3';
-import instances from './instances';
+// import instances from './instances';
 import logger from './logger';
 
 const debug = logger('quill:events');
 const EVENTS = ['selectionchange', 'mousedown', 'mouseup', 'click'];
 const EMITTERS = [];
-const supportsRootNode = ('getRootNode' in document);
+const supportsRootNode = 'getRootNode' in document;
 
 EVENTS.forEach(eventName => {
   document.addEventListener(eventName, (...args) => {
-    EMITTERS.forEach((em) => {
+    EMITTERS.forEach(em => {
       em.handleDOM(...args);
     });
   });
@@ -29,18 +29,18 @@ class Emitter extends EventEmitter {
   }
 
   handleDOM(event, ...args) {
-    const target = (event.composedPath ? event.composedPath()[0] : event.target);
-    const containsNode = (node, target) => {
-      if (!supportsRootNode || target.getRootNode() === document) {
-        return node.contains(target);
+    const target = event.composedPath ? event.composedPath()[0] : event.target;
+    const containsNode = (node, targetNode) => {
+      if (!supportsRootNode || targetNode.getRootNode() === document) {
+        return node.contains(targetNode);
       }
 
-      while (!node.contains(target)) {
-        const root = target.getRootNode();
+      while (!node.contains(targetNode)) {
+        const root = targetNode.getRootNode();
         if (!root || !root.host) {
           return false;
         }
-        target = root.host;
+        targetNode = root.host;
       }
 
       return true;
